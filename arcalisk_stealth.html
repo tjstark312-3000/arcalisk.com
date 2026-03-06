@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcalisk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Cinzel:wght@400;500;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --parch:#f5edd8;--cream:#faf4e6;
+  --ink:#2c1a08;--ink2:#0e0804;--ink3:#160c05;
+  --ochre:#c08020;--gold:#b8720a;--rust:#9a4010;
+  --teal:#1a5a50;--smoke:#8a7060;--dust:#c4b090;
+  --serif:'Cormorant',Georgia,serif;
+  --caps:'Cinzel',Georgia,serif;
+  --ital:'Crimson Pro',Georgia,serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth}
+body{background:var(--ink2);color:var(--parch);font-family:var(--serif);line-height:1.7;overflow-x:hidden;cursor:none}
+body::after{content:'';position:fixed;inset:0;z-index:8000;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.036'/%3E%3C/svg%3E")}
+::selection{background:rgba(192,128,32,.22)}
+::-webkit-scrollbar{width:2px}::-webkit-scrollbar-track{background:var(--ink2)}::-webkit-scrollbar-thumb{background:rgba(192,128,32,.28)}
+
+/* ── CURSOR ── */
+#cur,#cur2{position:fixed;pointer-events:none;z-index:9999;border-radius:50%;transform:translate(-50%,-50%)}
+#cur{width:5px;height:5px;background:var(--ochre);box-shadow:0 0 10px rgba(192,128,32,.7);transition:width .1s,height .1s,background .1s}
+#cur2{width:26px;height:26px;border:1px solid rgba(192,128,32,.25);transition:width .16s,height .16s,border-color .16s}
+body.hov #cur{width:9px;height:9px;background:var(--rust)}
+body.hov #cur2{width:42px;height:42px;border-color:rgba(154,64,16,.38)}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:600;
+  height:60px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 64px;
+  background:transparent;
+  transition:background .5s,border-color .5s;
+}
+nav.scrolled{background:rgba(14,8,4,.94);border-bottom:1px solid rgba(192,128,32,.1);backdrop-filter:blur(20px)}
+.nav-logo{text-decoration:none;font-family:var(--caps);font-size:13px;font-weight:700;letter-spacing:.38em;color:var(--parch)}
+.nav-right{font-family:var(--ital);font-style:italic;font-size:10px;color:rgba(192,128,32,.38);letter-spacing:.06em}
+
+/* ══════════════════════════════════
+   HERO
+══════════════════════════════════ */
+.hero{position:relative;width:100%;height:100vh;min-height:720px;overflow:hidden}
+#linac-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* layered gradient: strong at top (text zone), fades mid, slight bottom */
+.hero-grad{
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(to bottom,
+      rgba(14,8,4,1) 0%,
+      rgba(14,8,4,.96) 22%,
+      rgba(14,8,4,.72) 40%,
+      rgba(14,8,4,.2) 58%,
+      rgba(14,8,4,.08) 70%,
+      transparent 80%),
+    linear-gradient(to top, rgba(14,8,4,1) 0%, transparent 14%),
+    linear-gradient(to right, rgba(14,8,4,.7) 0%, transparent 12%),
+    linear-gradient(to left, rgba(14,8,4,.7) 0%, transparent 12%);
+}
+
+/* Text: centered, top 45% */
+.hero-content{
+  position:absolute;top:0;left:0;right:0;height:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding-top:60px;z-index:4;
+}
+.hero-label{
+  font-family:var(--caps);font-size:8px;font-weight:500;
+  letter-spacing:.6em;color:rgba(192,128,32,.42);
+  margin-bottom:22px;
+  opacity:0;animation:fadeUp .8s ease .3s forwards;
+}
+.hero-h1{
+  font-family:var(--caps);
+  font-size:clamp(52px,11vw,136px);
+  font-weight:900;line-height:.88;letter-spacing:.08em;
+  opacity:0;animation:fadeUp 1.1s ease .5s forwards;
+}
+.hero-h1 .l1{display:block;color:var(--parch);text-shadow:0 0 120px rgba(192,128,32,.1)}
+.hero-h1 .l2{display:block;color:transparent;-webkit-text-stroke:1px rgba(245,237,216,.13);margin-top:3px}
+
+/* HUD — top right */
+.hud{
+  position:absolute;top:76px;right:64px;z-index:4;
+  opacity:0;animation:fadeIn .9s ease 1.9s forwards;
+}
+.hud-item{display:flex;align-items:baseline;gap:9px;margin-bottom:5px}
+.hud-k{font-family:var(--caps);font-size:6.5px;letter-spacing:.3em;color:rgba(192,128,32,.28);text-transform:uppercase}
+.hud-v{font-family:var(--ital);font-style:italic;font-size:12px;color:rgba(245,237,216,.55)}
+.hud-v.oc{color:rgba(192,128,32,.65)}
+.hud-v.gr{color:rgba(74,168,110,.6)}
+.hud-dot{width:5px;height:5px;border-radius:50%;background:rgba(74,168,110,.7);box-shadow:0 0 6px rgba(74,168,110,.5);display:inline-block;margin-right:6px;animation:blink 2.2s ease-in-out infinite}
+
+/* Scroll indicator */
+.hero-scroll{
+  position:absolute;bottom:38px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  opacity:0;animation:fadeIn 1s ease 2.4s forwards;z-index:4;
+}
+.hs-t{font-family:var(--ital);font-style:italic;font-size:9px;color:rgba(192,128,32,.26);letter-spacing:.2em}
+.hs-b{width:1px;height:36px;background:rgba(192,128,32,.13);position:relative;overflow:hidden}
+.hs-b::after{content:'';position:absolute;top:-100%;left:0;right:0;height:50%;background:linear-gradient(180deg,transparent,var(--ochre));animation:barDrop 2.3s ease-in-out infinite}
+
+/* ══════════════════════════════════
+   STATEMENT SECTION
+══════════════════════════════════ */
+.statement-section{
+  position:relative;z-index:2;
+  background:var(--ink2);
+  padding:130px 64px;
+  border-top:1px solid rgba(192,128,32,.07);
+  border-bottom:1px solid rgba(192,128,32,.06);
+}
+.stmt-wrap{max-width:1120px;margin:0 auto}
+.stmt-top{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:96px;align-items:center;
+  margin-bottom:80px;
+}
+.stmt-hl{
+  font-family:var(--caps);
+  font-size:clamp(28px,3.8vw,52px);
+  font-weight:700;line-height:1.02;letter-spacing:.04em;
+  color:var(--parch);
+}
+.stmt-hl em{
+  display:block;font-family:var(--serif);font-style:italic;
+  font-weight:300;color:var(--ochre);font-size:.88em;margin-top:4px;
+}
+.stmt-body{
+  font-family:var(--ital);font-style:italic;font-size:17px;
+  font-weight:300;line-height:2;color:rgba(245,237,216,.58);
+}
+.stmt-body strong{font-style:normal;font-weight:400;color:rgba(245,237,216,.86)}
+.stmt-body em{color:rgba(192,128,32,.72);font-style:italic}
+.stmt-body p+p{margin-top:18px}
+
+/* Stats grid */
+.stat-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:rgba(192,128,32,.06);
+}
+.sg-cell{
+  background:var(--ink2);padding:36px 22px;
+  border-top:1px solid rgba(192,128,32,.1);
+  transition:background .3s;
+}
+.sg-cell:hover{background:rgba(22,12,5,.95)}
+.sg-num{
+  font-family:var(--ital);font-style:italic;
+  font-size:clamp(32px,3.5vw,50px);font-weight:300;
+  color:rgba(192,128,32,.65);line-height:1;margin-bottom:10px;
+}
+.sg-lbl{
+  font-family:var(--caps);font-size:7px;font-weight:500;
+  letter-spacing:.3em;text-transform:uppercase;
+  color:rgba(245,237,216,.32);
+}
+
+/* ══════════════════════════════════
+   ADSR SECTION
+══════════════════════════════════ */
+.adsr-section{
+  position:relative;z-index:2;
+  background:var(--ink3);
+  border-top:1px solid rgba(192,128,32,.05);
+  overflow:hidden;
+}
+.adsr-overlay{
+  position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:3;
+  background:
+    linear-gradient(to right, rgba(22,12,5,.85) 0%, rgba(22,12,5,.3) 32%, transparent 55%),
+    linear-gradient(to bottom, rgba(22,12,5,.55) 0%, transparent 20%),
+    linear-gradient(to top, rgba(22,12,5,.8) 0%, transparent 22%);
+}
+.adsr-text{
+  position:absolute;top:0;left:0;bottom:0;
+  z-index:4;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:0 64px;
+  max-width:420px;
+}
+.adsr-eyebrow{
+  font-family:var(--caps);font-size:7.5px;font-weight:600;
+  letter-spacing:.5em;text-transform:uppercase;
+  color:rgba(192,128,32,.42);
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:20px;
+}
+.adsr-eyebrow::before{content:'';width:18px;height:1px;background:rgba(192,128,32,.32);flex-shrink:0}
+.adsr-h{
+  font-family:var(--caps);
+  font-size:clamp(24px,3vw,40px);
+  font-weight:700;line-height:1.08;letter-spacing:.04em;
+  color:var(--parch);margin-bottom:20px;
+}
+.adsr-h em{font-family:var(--serif);font-style:italic;color:var(--ochre);font-weight:300}
+.adsr-p{
+  font-family:var(--ital);font-style:italic;font-size:15.5px;
+  font-weight:300;line-height:1.9;color:rgba(245,237,216,.42);
+}
+#adsr-canvas{display:block;width:100%;height:82vh;min-height:520px}
+
+/* FOOTER */
+footer{
+  padding:22px 64px;background:var(--ink2);
+  border-top:1px solid rgba(192,128,32,.06);
+  display:flex;align-items:center;justify-content:center;
+}
+.ft-c{font-family:var(--ital);font-style:italic;font-size:10px;color:rgba(245,237,216,.15);letter-spacing:.07em}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .9s ease,transform .9s ease}
+.reveal.vis{opacity:1;transform:translateY(0)}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.32s}.d4{transition-delay:.44s}
+
+/* KEYFRAMES */
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes barDrop{0%{top:-100%}100%{top:200%}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+@media(max-width:900px){
+  nav{padding:0 24px}
+  .hud{display:none}
+  .hero-content{padding-top:72px}
+  .statement-section{padding:80px 24px}
+  .stmt-top{grid-template-columns:1fr;gap:40px}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .adsr-text{position:relative;max-width:100%;padding:60px 24px 24px;background:rgba(22,12,5,.9)}
+  .adsr-overlay{display:none}
+  .contact-section{padding:80px 24px}
+  footer{padding:20px 24px}
+}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="cur2"></div>
+
+<nav id="nav">
+  <a href="#" class="nav-logo">ARCALISK</a>
+  <div class="nav-right">Private · MMXXV</div>
+</nav>
+
+<!-- ══════════ HERO ══════════ -->
+<section class="hero" id="hero">
+  <canvas id="linac-canvas"></canvas>
+  <div class="hero-grad"></div>
+
+  <div class="hud">
+    <div class="hud-item"><span class="hud-k">Energy</span><span class="hud-v oc" id="hud-e">248 MeV</span></div>
+    <div class="hud-item"><span class="hud-k">Current</span><span class="hud-v" id="hud-c">4.18 mA</span></div>
+    <div class="hud-item"><span class="hud-k">Emittance</span><span class="hud-v" id="hud-em">1.8 mm·mrad</span></div>
+    <div class="hud-item"><span class="hud-k">Status</span><span class="hud-v gr"><span class="hud-dot"></span>NOMINAL</span></div>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-label">ARCALISK · MMXXV</div>
+    <h1 class="hero-h1">
+      <span class="l1">ARCALISK</span>
+      <span class="l2">ACCELERATES.</span>
+    </h1>
+  </div>
+
+  <div class="hero-scroll">
+    <span class="hs-t">descend</span>
+    <div class="hs-b"></div>
+  </div>
+</section>
+
+<!-- ══════════ STATEMENT ══════════ -->
+<section class="statement-section" id="about">
+  <div class="stmt-wrap">
+    <div class="stmt-top">
+      <div class="stmt-hl reveal">
+        We build the machine<br>
+        <em>nobody else will.</em>
+      </div>
+      <div>
+        <div class="stmt-body reveal d2">
+          <p><strong>Proton beams of extraordinary intensity.</strong> Compact enough to deploy where they are needed. Precise enough to matter.</p>
+        </div>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="sg-cell reveal"><div class="sg-num">250</div><div class="sg-lbl">MeV · Design Energy</div></div>
+      <div class="sg-cell reveal d1"><div class="sg-num">10¹⁴</div><div class="sg-lbl">p/s · Beam Intensity</div></div>
+      <div class="sg-cell reveal d2"><div class="sg-num">&lt; 1%</div><div class="sg-lbl">Emittance Growth</div></div>
+      <div class="sg-cell reveal d3"><div class="sg-num">3</div><div class="sg-lbl">Civilisation Markets</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ ADSR SECTION ══════════ -->
+<section class="adsr-section" id="adsr">
+  <canvas id="adsr-canvas"></canvas>
+  <div class="adsr-overlay"></div>
+  <div class="adsr-text reveal">
+    <div class="adsr-eyebrow">Project ADSR</div>
+    <h2 class="adsr-h">A different<br>kind of <em>machine.</em></h2>
+    <p class="adsr-p">Revealing soon.</p>
+  </div>
+</section>
+
+<footer><div class="ft-c">Arcalisk · MMXXV · Private</div></footer>
+
+<script>
+(function(){
+'use strict';
+
+/* ── PAGE HIDDEN ── */
+var HIDDEN=false;
+document.addEventListener('visibilitychange',function(){HIDDEN=document.hidden;});
+
+/* ── CURSOR ── */
+var c1=document.getElementById('cur'), c2=document.getElementById('cur2');
+var tx=innerWidth/2, ty=innerHeight/2, lx=tx, ly=ty;
+(function tick(){lx+=(tx-lx)*.15;ly+=(ty-ly)*.15;c1.style.cssText='left:'+tx+'px;top:'+ty+'px';c2.style.cssText='left:'+lx+'px;top:'+ly+'px';requestAnimationFrame(tick);})();
+document.addEventListener('mousemove',function(e){tx=e.clientX;ty=e.clientY;});
+document.querySelectorAll('a,button,input').forEach(function(el){
+  el.addEventListener('mouseenter',function(){document.body.classList.add('hov')});
+  el.addEventListener('mouseleave',function(){document.body.classList.remove('hov')});
+});
+
+/* ── NAV ── */
+var nav=document.getElementById('nav');
+window.addEventListener('scroll',function(){nav.classList.toggle('scrolled',scrollY>60);},{passive:true});
+
+/* ── REVEAL ── */
+var io=new IntersectionObserver(function(ent){ent.forEach(function(e){if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);}});},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+
+/* ── HUD TICK ── */
+setInterval(function(){
+  var e=248+Math.round((Math.random()-.5)*14);
+  document.getElementById('hud-e').textContent=e+' MeV';
+  document.getElementById('hud-c').textContent=(4.18+(Math.random()-.5)*.28).toFixed(2)+' mA';
+  document.getElementById('hud-em').textContent=(1.8+(Math.random()-.5)*.18).toFixed(1)+' mm·mrad';
+},2200);
+
+/* ── EMAIL ── */
+
+
+/* ══════════════════════════════════════════════════════
+   LINAC CANVAS
+   Layout: [H⁻ SOURCE]─[PRE-BUNCHER]─[DTL × 10, RF-gated]─[QUAD TRIPLETS × 2]─[EXTRACTION]
+   Improvements:
+    • Beam envelope drawn as oscillating filled band
+    • Particle bunches (2-4 particles each)
+    • Quad field line hints
+    • Pre-buncher visualization
+    • Atmospheric warm glow
+    • Wider vertical scale, fills viewport
+══════════════════════════════════════════════════════ */
+var LC=document.getElementById('linac-canvas');
+var LX=LC.getContext('2d');
+var LW,LH,LT=0;
+function lRsz(){LW=LC.width=LC.offsetWidth;LH=LC.height=LC.offsetHeight;}
+window.addEventListener('resize',lRsz,{passive:true});lRsz();
+
+/* Beam axis: 62% down the canvas (well clear of text at top 50%) */
+function BY(){return LH*.62;}
+var LP=80; /* horizontal margin */
+function BS(){return LP;}
+function BE(){return LW-LP;}
+
+/* Beam envelope: oscillates due to quadrupole focusing */
+function envelope(x){
+  var f=(x-BS())/(BE()-BS());
+  f=Math.max(0,Math.min(1,f));
+  var base=18-f*9; /* shrinks with energy */
+  var osc=Math.sin(f*Math.PI*9)*(6-f*4);
+  return Math.max(4,base+osc);
+}
+
+/* Build component layout */
+function lBuild(){
+  var s=BS(),span=BE()-s;
+  var C=[];
+  C.push({t:'source',x:s,lbl:'H⁻  SOURCE'});
+  C.push({t:'buncher',x:s+span*.048});
+  /* 10 drift tubes */
+  [.08,.132,.188,.250,.318,.392,.472,.557,.647,.738].forEach(function(f,i){
+    C.push({t:'dtube',x:s+f*span,i:i});
+  });
+  /* 6 quadrupoles in two triplets */
+  var pol=[1,-1,1,-1,1,-1];
+  [.772,.800,.828,.868,.896,.924].forEach(function(f,i){
+    C.push({t:'quad',x:s+f*span,pol:pol[i]});
+  });
+  /* flanges */
+  [.760,.855,.972].forEach(function(f){C.push({t:'flange',x:s+f*span});});
+  C.push({t:'target',x:s+span*.978});
+  return C;
+}
+var lLayout=lBuild();
+window.addEventListener('resize',function(){lLayout=lBuild();},{passive:true});
+
+/* Particle bunches */
+var NB=6;
+var bunches=[];
+function mkBunch(){
+  var n=2+Math.floor(Math.random()*3);
+  var pts=[];
+  for(var i=0;i<n;i++){pts.push({dx:(Math.random()-.5)*5,wA:3+Math.random()*4,wF:.062+Math.random()*.038,wP:Math.random()*Math.PI*2});}
+  return{x:BS(),pts:pts,trail:[],dead:false};
+}
+for(var bi=0;bi<NB;bi++){var b=mkBunch();b.x=BS()+(bi/NB)*(BE()-BS())*.7;bunches.push(b);}
+
+function drawLinac(){
+  if(HIDDEN){requestAnimationFrame(drawLinac);return;}
+  LX.clearRect(0,0,LW,LH); LT+=.014;
+  var by=BY(),bs=BS(),be=BE();
+
+  /* ── Background warm atmosphere ── */
+  var atm=LX.createRadialGradient(LW/2,by,0,LW/2,by,LH*.52);
+  atm.addColorStop(0,'rgba(130,75,12,.055)');
+  atm.addColorStop(1,'transparent');
+  LX.fillStyle=atm;LX.fillRect(0,0,LW,LH);
+
+  /* ── Beam envelope band ── */
+  LX.save();
+  LX.beginPath();
+  for(var x=bs;x<=be;x+=3){var e=envelope(x);if(x===bs)LX.moveTo(x,by-e);else LX.lineTo(x,by-e);}
+  for(var x2=be;x2>=bs;x2-=3){LX.lineTo(x2,by+envelope(x2));}
+  LX.closePath();
+  var eg=LX.createLinearGradient(0,by-22,0,by+22);
+  eg.addColorStop(0,'rgba(192,128,32,0)');
+  eg.addColorStop(.48,'rgba(192,128,32,.038)');
+  eg.addColorStop(1,'rgba(192,128,32,0)');
+  LX.fillStyle=eg;LX.fill();
+
+  /* Envelope edge lines */
+  ['top','bot'].forEach(function(side){
+    LX.beginPath();
+    for(var x3=bs;x3<=be;x3+=3){
+      var e3=envelope(x3);
+      var y3=side==='top'?by-e3:by+e3;
+      if(x3===bs)LX.moveTo(x3,y3);else LX.lineTo(x3,y3);
+    }
+    LX.strokeStyle='rgba(192,128,32,.1)';LX.lineWidth=1;LX.stroke();
+  });
+  LX.restore();
+
+  /* Axis dashed */
+  LX.setLineDash([2,14]);LX.strokeStyle='rgba(192,128,32,.05)';LX.lineWidth=1;
+  LX.beginPath();LX.moveTo(bs,by);LX.lineTo(be,by);LX.stroke();
+  LX.setLineDash([]);
+
+  /* ── COMPONENTS ── */
+  var pH=24;
+  lLayout.forEach(function(c){
+    var cx=c.x;
+
+    /* SOURCE */
+    if(c.t==='source'){
+      var r=14;
+      /* emission rings */
+      for(var ri=0;ri<3;ri++){
+        var p=.32+.34*Math.sin(LT*2.1-ri*.9);
+        LX.beginPath();LX.arc(cx,by,r+7+ri*9+p*4,0,Math.PI*2);
+        LX.strokeStyle='rgba(74,180,118,'+(p*.18/(ri+1))+')';LX.lineWidth=1;LX.stroke();
+      }
+      LX.beginPath();LX.arc(cx,by,r,0,Math.PI*2);
+      LX.strokeStyle='rgba(74,180,118,.52)';LX.lineWidth=1.5;LX.stroke();
+      LX.fillStyle='rgba(74,180,118,.07)';LX.fill();
+      LX.fillStyle='rgba(74,180,118,.38)';
+      LX.font='600 6.5px Cinzel,serif';LX.textAlign='center';LX.textBaseline='bottom';
+      LX.fillText(c.lbl||'SOURCE',cx,by-r-14);
+    }
+
+    /* PRE-BUNCHER */
+    else if(c.t==='buncher'){
+      /* 3 thin plates */
+      [-4,0,4].forEach(function(dx){
+        var pa=.3+.4*Math.sin(LT*4.5+dx*.8);
+        LX.strokeStyle='rgba(192,128,32,'+(pa*.4)+')';LX.lineWidth=1.2;
+        LX.beginPath();LX.moveTo(cx+dx,by-pH+2);LX.lineTo(cx+dx,by+pH-2);LX.stroke();
+      });
+      LX.fillStyle='rgba(192,128,32,.22)';
+      LX.font='600 6.5px Cinzel,serif';LX.textAlign='center';LX.textBaseline='bottom';
+      LX.fillText('BUNCHER',cx,by-pH-8);
+    }
+
+    /* DRIFT TUBE */
+    else if(c.t==='dtube'){
+      var tw=14;
+      var a1=c.i%2===0?.5:.38;
+      var col='rgba(192,128,32,'+a1+')';
+      var fill='rgba(192,128,32,'+(c.i%2===0?.055:.04)+')';
+      LX.fillStyle=fill;
+      LX.fillRect(cx-tw/2,by-pH,tw,pH-4);
+      LX.strokeStyle=col;LX.lineWidth=1;
+      LX.strokeRect(cx-tw/2,by-pH,tw,pH-4);
+      LX.fillRect(cx-tw/2,by+4,tw,pH-4);
+      LX.strokeRect(cx-tw/2,by+4,tw,pH-4);
+      /* aperture gap */
+      LX.strokeStyle='rgba(192,128,32,.16)';LX.lineWidth=.5;
+      LX.beginPath();LX.moveTo(cx-tw/2,by-3);LX.lineTo(cx+tw/2,by-3);LX.stroke();
+      LX.beginPath();LX.moveTo(cx-tw/2,by+3);LX.lineTo(cx+tw/2,by+3);LX.stroke();
+      /* RF flash */
+      var rfA=Math.max(0,Math.sin((LT*3.9+c.i*.7)%(Math.PI*2)))*.26;
+      if(rfA>.05){
+        var rfg=LX.createRadialGradient(cx,by,0,cx,by,18);
+        rfg.addColorStop(0,'rgba(240,165,0,'+rfA+')');rfg.addColorStop(1,'transparent');
+        LX.beginPath();LX.arc(cx,by,18,0,Math.PI*2);LX.fillStyle=rfg;LX.fill();
+      }
+    }
+
+    /* QUADRUPOLE */
+    else if(c.t==='quad'){
+      var qh=pH+11,qw=7;
+      var isF=c.pol>0;
+      var qcol=isF?'rgba(154,64,16,.68)':'rgba(26,90,80,.62)';
+      LX.fillStyle=isF?'rgba(154,64,16,.07)':'rgba(26,90,80,.07)';
+      LX.fillRect(cx-qw/2,by-qh,qw,qh*2);
+      LX.strokeStyle=qcol;LX.lineWidth=1;
+      LX.strokeRect(cx-qw/2,by-qh,qw,qh*2);
+      [-1,1].forEach(function(s){
+        LX.beginPath();
+        LX.moveTo(cx-qw,by+s*(qh-1));LX.lineTo(cx,by+s*(qh+7));LX.lineTo(cx+qw,by+s*(qh-1));
+        LX.fillStyle=isF?'rgba(154,64,16,.13)':'rgba(26,90,80,.1)';LX.fill();
+        LX.strokeStyle=qcol;LX.lineWidth=.8;LX.stroke();
+      });
+      /* Quad field lines (4 petals) */
+      var fla=LT*.6;
+      for(var petal=0;petal<4;petal++){
+        var pa2=fla+petal*Math.PI/2;
+        var fx=cx+Math.cos(pa2)*(qw*.5);var fy=by+Math.sin(pa2)*(qh*.45);
+        LX.beginPath();LX.arc(fx,fy,2.5,0,Math.PI*2);
+        LX.fillStyle=qcol.replace('.68','.2').replace('.62','.18');LX.fill();
+      }
+      LX.fillStyle=qcol;LX.font='600 6px Cinzel,serif';LX.textAlign='center';LX.textBaseline='top';
+      LX.fillText(isF?'F':'D',cx,by+qh+9);
+    }
+
+    /* FLANGE */
+    else if(c.t==='flange'){
+      LX.strokeStyle='rgba(192,128,32,.14)';LX.lineWidth=2.5;
+      LX.beginPath();LX.moveTo(cx,by-pH-6);LX.lineTo(cx,by+pH+6);LX.stroke();
+      LX.strokeStyle='rgba(192,128,32,.06)';LX.lineWidth=1;
+      [-4,4].forEach(function(dx){LX.beginPath();LX.moveTo(cx+dx,by-pH-5);LX.lineTo(cx+dx,by+pH+5);LX.stroke();});
+    }
+
+    /* EXTRACTION */
+    else if(c.t==='target'){
+      LX.strokeStyle='rgba(192,128,32,.44)';LX.lineWidth=2;
+      LX.beginPath();LX.moveTo(cx,by-pH-9);LX.lineTo(cx,by+pH+9);LX.stroke();
+      var etg=LX.createRadialGradient(cx,by,0,cx,by,36);
+      etg.addColorStop(0,'rgba(192,128,32,.14)');etg.addColorStop(1,'transparent');
+      LX.beginPath();LX.arc(cx,by,36,0,Math.PI*2);LX.fillStyle=etg;LX.fill();
+      /* Output fan */
+      [-0.14,0,0.14].forEach(function(a){
+        LX.setLineDash([3,6]);LX.strokeStyle='rgba(192,128,32,.28)';LX.lineWidth=1;
+        LX.beginPath();LX.moveTo(cx,by);
+        LX.lineTo(cx+Math.cos(a)*55,by+Math.sin(a)*55);LX.stroke();
+        LX.setLineDash([]);
+      });
+      LX.fillStyle='rgba(192,128,32,.3)';LX.font='600 6.5px Cinzel,serif';
+      LX.textAlign='right';LX.textBaseline='bottom';
+      LX.fillText('OUTPUT',cx-8,by-pH-11);
+    }
+  });
+
+  /* ── BUNCHES ── */
+  bunches.forEach(function(bn){
+    if(bn.dead)return;
+    var ef=Math.min(1,(bn.x-BS())/(BE()-BS()));
+    bn.x+=.85+ef*5.2;
+    bn.trail.push({x:bn.x,y:by});
+    if(bn.trail.length>32)bn.trail.shift();
+    if(bn.x>BE()+70){bn.dead=true;return;}
+
+    /* Centroid trail */
+    if(bn.trail.length>2){
+      for(var ti=1;ti<bn.trail.length;ti++){
+        var tf=ti/bn.trail.length;
+        LX.beginPath();LX.moveTo(bn.trail[ti-1].x,bn.trail[ti-1].y);LX.lineTo(bn.trail[ti].x,bn.trail[ti].y);
+        LX.strokeStyle='rgba(192,128,32,'+(tf*.25)+')';LX.lineWidth=tf*2.5;LX.stroke();
+      }
+    }
+
+    /* Individual particles in bunch */
+    bn.pts.forEach(function(pt){
+      var ev=envelope(bn.x);
+      var dy=pt.wA*(1-ef*.82)*Math.sin(pt.wP+LT*pt.wF*65);
+      dy=Math.max(-ev*.9,Math.min(ev*.9,dy));
+      var px=bn.x+pt.dx*(1-ef*.55),py=by+dy;
+      var br=.48+ef*.52;
+      var gr=LX.createRadialGradient(px,py,0,px,py,10);
+      gr.addColorStop(0,'rgba(245,200,72,'+(br*.88)+')');
+      gr.addColorStop(.45,'rgba(192,128,32,'+(br*.34)+')');
+      gr.addColorStop(1,'transparent');
+      LX.beginPath();LX.arc(px,py,10,0,Math.PI*2);LX.fillStyle=gr;LX.fill();
+      LX.beginPath();LX.arc(px,py,1.4+ef*1.8,0,Math.PI*2);
+      LX.fillStyle='rgba(255,242,208,.92)';
+      LX.shadowColor='rgba(240,178,36,.9)';LX.shadowBlur=9;
+      LX.fill();LX.shadowBlur=0;
+    });
+  });
+
+  bunches=bunches.filter(function(b){return !b.dead;});
+  while(bunches.length<NB)bunches.push(mkBunch());
+
+  /* Annotations */
+  LX.font='600 7px Cinzel,serif';LX.textAlign='center';LX.textBaseline='top';
+  LX.fillStyle='rgba(192,128,32,.15)';
+  LX.fillText('DRIFT-TUBE LINAC  ·  RF-ACCELERATING SECTION',BS()+(BE()-BS())*.38,BY()+pH+32);
+  LX.fillText('QUADRUPOLE  FOCUSING  LATTICE',BS()+(BE()-BS())*.848,BY()+pH+32);
+
+  requestAnimationFrame(drawLinac);
+}
+drawLinac();
+
+/* ══════════════════════════════════════════════════════
+   ADSR CANVAS
+   Visualization:
+    • Proton beam entering from left edge → spallation target (center)
+    • Spallation target: glowing core, dynamic
+    • Neutrons radiate outward (green dots, fast)
+    • Ring of fuel assemblies (hexagonal rods in circle)
+    • Some neutrons trigger fission events (gold flash)
+    • Secondary neutrons from fission (ochre dots)
+    • Outer reflector ring (dashed teal)
+    • k_eff < 1 annotation
+    • ADSR label
+    • Background: deep field with faint concentric rings (Fermi zones)
+══════════════════════════════════════════════════════ */
+var AC=document.getElementById('adsr-canvas');
+var AX=AC.getContext('2d');
+var AW,AH,AT=0;
+function aRsz(){AW=AC.width=AC.offsetWidth;AH=AC.height=AC.offsetHeight;}
+window.addEventListener('resize',function(){aRsz();fuelRing=buildFuel();},{passive:true});aRsz();
+
+function aCX(){return AW*.52;}
+function aCY(){return AH*.5;}
+function coreR(){return Math.min(AW,AH)*.24;}
+function tgtR(){return Math.min(AW,AH)*.058;}
+function reflR(){return Math.min(AW,AH)*.4;}
+
+/* Fuel assembly ring */
+var N_FUEL=14;
+function buildFuel(){
+  var cr=coreR(),cx=aCX(),cy=aCY();
+  var arr=[];
+  for(var i=0;i<N_FUEL;i++){
+    var a=(i/N_FUEL)*Math.PI*2-Math.PI/2;
+    arr.push({x:cx+Math.cos(a)*cr,y:cy+Math.sin(a)*cr,a:a,fl:0});
+  }
+  return arr;
+}
+var fuelRing=buildFuel();
+
+/* Neutrons */
+var neutrons=[];
+var MAX_N=80;
+function mkNeutron(x,y,sec){
+  var a=Math.random()*Math.PI*2;
+  var spd=sec?(1.4+Math.random()*2):(2.2+Math.random()*3.5);
+  return{x:x,y:y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:1,sec:sec||false};
+}
+
+/* Proton beam */
+var protons=[];
+function mkProton(){return{x:0,y:aCY()+(Math.random()-.5)*3,vx:4.5+Math.random()*2,trail:[],dead:false};}
+for(var pi=0;pi<6;pi++){var pp=mkProton();pp.x=(pi/6)*aCX();protons.push(pp);}
+
+/* Modulator ring rotation */
+var modAngle=0;
+
+function drawADSR(){
+  if(HIDDEN){requestAnimationFrame(drawADSR);return;}
+  AX.clearRect(0,0,AW,AH); AT+=.011;
+  modAngle+=.004;
+
+  var cx=aCX(),cy=aCY(),cr=coreR(),tr=tgtR(),rr=reflR();
+
+  /* ── Background deep field ── */
+  AX.fillStyle='rgba(22,12,5,1)';AX.fillRect(0,0,AW,AH);
+
+  /* Deep center glow */
+  var cg=AX.createRadialGradient(cx,cy,0,cx,cy,rr*1.3);
+  cg.addColorStop(0,'rgba(110,65,12,.07)');
+  cg.addColorStop(.5,'rgba(60,32,5,.04)');
+  cg.addColorStop(1,'transparent');
+  AX.fillStyle=cg;AX.fillRect(0,0,AW,AH);
+
+  /* Fermi zone rings (concentric, very faint) */
+  for(var ri=1;ri<=5;ri++){
+    var ringR=tr*2+ri*(rr-tr*2)/5;
+    var alpha=.025-ri*.004;
+    AX.beginPath();AX.arc(cx,cy,ringR,0,Math.PI*2);
+    AX.strokeStyle='rgba(192,128,32,'+alpha+')';AX.lineWidth=1;AX.stroke();
+  }
+
+  /* ── Proton beam line ── */
+  var beamY=cy;
+  /* Beam pipe (axis) */
+  AX.setLineDash([2,10]);
+  AX.strokeStyle='rgba(192,128,32,.06)';AX.lineWidth=1;
+  AX.beginPath();AX.moveTo(0,beamY);AX.lineTo(cx-tr-5,beamY);AX.stroke();
+  AX.setLineDash([]);
+  /* Beam envelope lines */
+  [-4,4].forEach(function(dy){
+    AX.strokeStyle='rgba(192,128,32,.03)';AX.lineWidth=1;
+    AX.beginPath();AX.moveTo(0,beamY+dy);AX.lineTo(cx-tr-5,beamY+dy);AX.stroke();
+  });
+  /* p⁺ label */
+  AX.fillStyle='rgba(192,128,32,.28)';
+  AX.font='italic 10px Crimson Pro,serif';AX.textAlign='left';AX.textBaseline='bottom';
+  AX.fillText('p⁺',18,beamY-10);
+
+  /* Proton particles */
+  protons.forEach(function(p){
+    if(p.dead)return;
+    p.x+=p.vx;p.trail.push({x:p.x,y:p.y});
+    if(p.trail.length>22)p.trail.shift();
+    if(p.x>cx-tr-4){p.dead=true;
+      /* spawn neutrons on impact */
+      if(neutrons.length<MAX_N){
+        for(var ni=0;ni<4+Math.floor(Math.random()*3);ni++){
+          neutrons.push(mkNeutron(cx+(Math.random()-.5)*tr*1.2,cy+(Math.random()-.5)*tr*1.2,false));
+        }
+      }
+      return;
+    }
+    for(var ti=1;ti<p.trail.length;ti++){
+      var tf=ti/p.trail.length;
+      AX.beginPath();AX.moveTo(p.trail[ti-1].x,p.trail[ti-1].y);AX.lineTo(p.trail[ti].x,p.trail[ti].y);
+      AX.strokeStyle='rgba(192,128,32,'+(tf*.34)+')';AX.lineWidth=tf*2.2;AX.stroke();
+    }
+    AX.beginPath();AX.arc(p.x,p.y,2.2,0,Math.PI*2);
+    AX.fillStyle='rgba(255,220,100,.88)';
+    AX.shadowColor='rgba(240,180,40,.9)';AX.shadowBlur=7;AX.fill();AX.shadowBlur=0;
+  });
+  protons=protons.filter(function(p){return !p.dead;});
+  while(protons.length<6)protons.push(mkProton());
+
+  /* ── Reflector ring ── */
+  AX.setLineDash([5,9]);
+  AX.beginPath();AX.arc(cx,cy,rr,0,Math.PI*2);
+  AX.strokeStyle='rgba(26,90,80,.22)';AX.lineWidth=1.5;AX.stroke();
+  AX.setLineDash([]);
+  /* Rotating moderator panels */
+  for(var mp=0;mp<6;mp++){
+    var ma=modAngle+mp*(Math.PI/3);
+    var mx1=cx+Math.cos(ma)*(rr-12),my1=cy+Math.sin(ma)*(rr-12);
+    var mx2=cx+Math.cos(ma)*(rr+8),my2=cy+Math.sin(ma)*(rr+8);
+    AX.strokeStyle='rgba(26,90,80,.18)';AX.lineWidth=2;
+    AX.beginPath();AX.moveTo(mx1,my1);AX.lineTo(mx2,my2);AX.stroke();
+  }
+  AX.fillStyle='rgba(26,90,80,.22)';
+  AX.font='600 6.5px Cinzel,serif';AX.textAlign='center';AX.textBaseline='bottom';
+  AX.fillText('REFLECTOR  /  MODERATOR',cx,cy-rr-10);
+
+  /* ── Fuel assemblies ── */
+  fuelRing.forEach(function(fp){
+    var fw=11,fh=22;
+    AX.save();
+    AX.translate(fp.x,fp.y);AX.rotate(fp.a+Math.PI/2);
+    /* Fission flash */
+    if(fp.fl>0){
+      var fg=AX.createRadialGradient(0,0,0,0,0,22+fp.fl*12);
+      fg.addColorStop(0,'rgba(240,185,45,'+(fp.fl*.65)+')');
+      fg.addColorStop(1,'transparent');
+      AX.beginPath();AX.arc(0,0,22+fp.fl*12,0,Math.PI*2);AX.fillStyle=fg;AX.fill();
+      fp.fl-=.035;
+    }
+    /* Rod body */
+    AX.fillStyle='rgba(26,90,80,.14)';AX.fillRect(-fw/2,-fh/2,fw,fh);
+    AX.strokeStyle='rgba(26,90,80,.48)';AX.lineWidth=1;AX.strokeRect(-fw/2,-fh/2,fw,fh);
+    /* Interior horizontal lines (fuel pellets) */
+    AX.strokeStyle='rgba(26,90,80,.22)';AX.lineWidth=.5;
+    for(var gi=1;gi<5;gi++){
+      var gy=-fh/2+gi*(fh/5);
+      AX.beginPath();AX.moveTo(-fw/2,gy);AX.lineTo(fw/2,gy);AX.stroke();
+    }
+    AX.restore();
+  });
+
+  /* ── Neutrons ── */
+  /* Periodic injection from target */
+  if(neutrons.length<MAX_N&&Math.random()<.28){
+    var na=Math.random()*Math.PI*2;
+    neutrons.push(mkNeutron(cx+Math.cos(na)*tr*.7,cy+Math.sin(na)*tr*.7,false));
+  }
+
+  var dead2=[];
+  neutrons.forEach(function(n,ni){
+    n.x+=n.vx;n.y+=n.vy;n.life-=.009;
+    /* Check fuel assembly collision */
+    fuelRing.forEach(function(fp){
+      var dx=n.x-fp.x,dy=n.y-fp.y;
+      if(Math.sqrt(dx*dx+dy*dy)<13&&n.life>.12){
+        n.life=0;fp.fl=1;
+        /* 1-2 secondary neutrons */
+        var ns=1+Math.floor(Math.random()*2);
+        for(var si=0;si<ns;si++){
+          if(neutrons.length<MAX_N*1.4)
+            neutrons.push(mkNeutron(fp.x,fp.y,true));
+        }
+      }
+    });
+    /* Check reflector boundary */
+    var dx2=n.x-cx,dy2=n.y-cy;
+    if(Math.sqrt(dx2*dx2+dy2*dy2)>rr||n.life<=0){dead2.push(ni);return;}
+    /* Draw */
+    var col=n.sec?'rgba(192,128,32,':'rgba(120,210,160,';
+    AX.beginPath();AX.arc(n.x,n.y,n.sec?1.9:1.6,0,Math.PI*2);
+    AX.fillStyle=col+n.life*.72+')';
+    AX.shadowColor=col+n.life*.4+')';AX.shadowBlur=4;
+    AX.fill();AX.shadowBlur=0;
+  });
+  for(var di=dead2.length-1;di>=0;di--)neutrons.splice(dead2[di],1);
+
+  /* ── Spallation target (front layer) ── */
+  var tp=.82+.18*Math.sin(AT*2.8);
+  /* Concentric glow layers */
+  for(var gi2=0;gi2<5;gi2++){
+    var gr2=tr*(1.6+gi2*1.3);
+    var ga=(.065-gi2*.011)*tp;
+    var tg=AX.createRadialGradient(cx,cy,0,cx,cy,gr2);
+    tg.addColorStop(0,'rgba(245,205,80,'+ga+')');tg.addColorStop(1,'transparent');
+    AX.beginPath();AX.arc(cx,cy,gr2,0,Math.PI*2);AX.fillStyle=tg;AX.fill();
+  }
+  AX.beginPath();AX.arc(cx,cy,tr,0,Math.PI*2);
+  AX.strokeStyle='rgba(192,128,32,'+(.48+.22*tp)+')';AX.lineWidth=1.5;AX.stroke();
+  AX.fillStyle='rgba(192,128,32,.07)';AX.fill();
+  /* Cross hair */
+  AX.strokeStyle='rgba(192,128,32,.28)';AX.lineWidth=.6;
+  AX.beginPath();AX.moveTo(cx-tr,cy);AX.lineTo(cx+tr,cy);AX.stroke();
+  AX.beginPath();AX.moveTo(cx,cy-tr);AX.lineTo(cx,cy+tr);AX.stroke();
+  /* Label */
+  AX.fillStyle='rgba(192,128,32,.32)';
+  AX.font='600 6.5px Cinzel,serif';AX.textAlign='center';AX.textBaseline='bottom';
+  AX.fillText('SPALLATION  TARGET',cx,cy-tr-12);
+
+  /* ── Annotations ── */
+  /* k_eff */
+  AX.fillStyle='rgba(245,237,216,.16)';
+  AX.font='italic 10.5px Crimson Pro,serif';AX.textAlign='right';AX.textBaseline='bottom';
+  AX.fillText('k_eff < 1  ·  sub-critical',AW-24,AH-16);
+  /* neutron legend */
+  AX.fillStyle='rgba(120,210,160,.3)';
+  AX.font='italic 9.5px Crimson Pro,serif';AX.textAlign='right';AX.textBaseline='top';
+  AX.fillText('n  ·  spallation neutrons',AW-24,18);
+  AX.fillStyle='rgba(192,128,32,.3)';
+  AX.fillText('n  ·  fission secondaries',AW-24,34);
+
+  requestAnimationFrame(drawADSR);
+}
+drawADSR();
+
+/* Recover from page hide */
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden){drawLinac();drawADSR();}
+});
+
+}());
+</script>
+</body>
+</html>
